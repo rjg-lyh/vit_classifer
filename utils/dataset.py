@@ -8,17 +8,14 @@ from torch.utils.data import Dataset, DataLoader
 
 class img_dataset(DataLoader):
     def __init__(self, image_root, label_place, transform):
-        super().__init__()
         self.pocessed = self.split_dataset(label_place)
         self.images = [os.path.join(image_root, path) for path in self.pocessed.keys()]
-        print(self.images)
         self.labels = list(self.pocessed.values())
-        print(self.labels)
         self.transform = transform
         
     
     def __len__(self):
-        return len(self.paths)
+        return len(self.images)
     
     def __getitem__(self, idx):
         image = Image.open(self.images[idx])
@@ -32,7 +29,7 @@ class img_dataset(DataLoader):
         with open(label_place, 'r') as f:
             for s in f.readlines():
                 path, label = s.strip().split(' ') 
-                pocessed[path] = np.array(label)
+                pocessed[path] = np.array(label, dtype=np.int64)
         return pocessed
 
 

@@ -1,9 +1,6 @@
 image_05087.jpg 1
 image_05088.jpg 1
-image_05089.jpg 1
 image_06612.jpg 2
 image_06613.jpg 2
-image_06614.jpg 2
 image_06734.jpg 3
 image_06735.jpg 3
-image_06736.jpg 3
