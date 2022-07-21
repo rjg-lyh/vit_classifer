@@ -68,7 +68,7 @@ def train(config, model, store_path):
 
     train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
 
-    device = torch.device('cpu') #'cuda' if torch.cuda.is_available() else 
+    device = torch.device('cpu') #'cuda:0' if torch.cuda.is_available() else 
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(),
@@ -91,7 +91,8 @@ def train(config, model, store_path):
             inputs = inputs.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
-
+            # print(inputs.shape)
+            # print(labels.shape)
             outputs = model(inputs)
             loss = model.loss_calcu(outputs, labels)
             loss.backward()
@@ -150,8 +151,8 @@ def train(config, model, store_path):
                   'optimizer' : optimizer.state_dict(),
                 }
                 torch.save(best_model_wts, store_path)
-        print('train and valid have finished successfully !')  
-        pass
+    print('train and valid have finished successfully !')  
+    pass
     
 
 def main():
@@ -170,13 +171,19 @@ def main():
           'learning_rate':1e-2,
           'weight_decay':0,
     }
+    
+    #device = torch.device('cpu')#'cuda:0' if torch.cuda.is_available() else '
     model = setup(CONFIG)
-    # x = torch.rand(3,3,224,224)
+    # model.to(device)
+    # x = torch.rand(3,3,224,224).to(device)
     # result = model(x)
     # print(result)
+    # print(x.is_cuda)
     train(CONFIG, model, 'checkpoint/best.pt')
 
 
 if __name__ == '__main__':
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # print(x)
     main()
 

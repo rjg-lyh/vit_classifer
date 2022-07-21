@@ -27,6 +27,7 @@ class Embedding(nn.Module):
         x = torch.cat((x, class_patch),dim=1)  #[2, 197, 768]
         x = x + self.location
         x = self.dropout(x)
+        #print(x.shape)  #----------------------------------------------
         return x
 
 class Attention(nn.Module):
@@ -48,7 +49,7 @@ class Attention(nn.Module):
         query = self.query(x)
         key = self.key(x)
         value = self.value(x)
-        multi_query = self.transpose_multiHeads(query) #[3, 12, 197, 64]
+        multi_query = self.transpose_multiHeads(query)#[3, 12, 197, 64]
         multi_key = self.transpose_multiHeads(key)
         multi_value = self.transpose_multiHeads(value)
         multi_attention = torch.matmul(multi_query, multi_value.transpose(-1,-2)) #[3, 12, 197, 197]
@@ -87,6 +88,7 @@ class Block(nn.Module):
     def forward(self, x):
         h = x
         x = self.ln(x)
+        #print(x.shape)      # ---------------------------------------
         x = self.attn(x)
         x += h
         h = x
@@ -106,8 +108,8 @@ class Encoder(nn.Module):
             self.layer_list.append(copy.deepcopy(self.block))
         
     def forward(self, x):
-        for block in self.layer_list:
-            x = block(x)
+        for block in self.layer_list:   
+            x = block(x)              
         x = self.ln(x)
         return x
 
