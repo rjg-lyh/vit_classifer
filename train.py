@@ -1,4 +1,7 @@
 import os
+import time
+import copy
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim 
@@ -50,17 +53,63 @@ def creat_dataLoader(data_dir, batch_size):
     # print(image_datasets['train'].imgs) #返回从所有文件夹中得到的图片的路径以及其类别
     return train_dataLoader, valid_dataLoader
 
-def train(config, model):
-    epoch_num = config['epoch_num']
-    train_dataLoader, valid_dataLoader = creat_dataLoader(config['data_dir'],  config['batch_size'])
+def train(config, model, store_path):
+    num_epochs = config['num_epochs']
+    learining_rate = config['learining_rate']
+    weight_decay = config['weight_decay']
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_acc = 0
+    val_acc_history = []
+    train_acc_history = []
+    train_losses = []
+    valid_losses = []
+
+    train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
 
     device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
     model.to(device)
 
-    optimizer_ft = optim.Adam(model.parameters(), lr=1e-2)#要训练啥参数，你来定
-    scheduler = optim.lr_scheduler.StepLR(optimizer_ft, step_size=10, gamma=0.1)#学习率每7个epoch衰减成原来的1/10
-    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(),
+                                lr=learining_rate,
+                                momentum=0.9,
+                                weight_decay=weight_decay)
+    scheduler = WarmupCosineSchedule(optimizer, warmup_steps=num_epochs//20, t_total=num_epochs)
+    # Train!
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
+        since = time.time()
 
+        model.train()
+
+        running_loss = 0.0
+        running_corrects = 0
+
+        for inputs, labels in train_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            optimizer.zero_grad()
+
+            outputs = model(inputs)
+            loss = model(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            _, predicts = torch.max(outputs, dim=1)
+            running_loss += loss.item() * inputs.size()
+            running_corrects += torch.sum(predicts == labels)
+            
+        epoch_acc = running_corrects/len(train_loader.dataset)
+        epoch_loss = running_loss/len(train_loader.dataset)
+
+        time_elapsed = time.time() - since
+        since = time.time()
+        print('Time elapsed {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+        print('train Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
+
+
+
+        pass
     
 
 def main():
@@ -75,15 +124,16 @@ def main():
           'num_classes':3,
           'data_dir':'data',
           'batch_size':2,
-          'epoch_num':200,
-
+          'num_epochs':200,
+          'learning_rate':1e-2,
+          'weight_decay':0,
     }
 
     
 
     model = setup(CONFIG)
 
-    train(CONFIG, model)
+    train(CONFIG, model, 'checkpoint')
 
 
 

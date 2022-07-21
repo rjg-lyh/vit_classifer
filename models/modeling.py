@@ -129,9 +129,19 @@ class VisionTransformer(nn.Module):
         num_classes = config['num_classes']
         self.transformer = Transformer(config)
         self.head = nn.Linear(hidden_size, num_classes)
+        self.softmax = nn.Softmax(dim=1)
+        self.CELoss = nn.CrossEntropyLoss()
         pass
     def forward(self, x):
         x = self.transformer(x)
         patch0 = x[:, 0]
         results = self.head(patch0)
         return results
+
+    def loss_calcu(self, x, targets):
+        targets = targets.t()
+        x = self.softmax(x)
+        loss = self.CELoss(x, targets)
+        return loss
+
+
