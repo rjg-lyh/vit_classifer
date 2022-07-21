@@ -6,13 +6,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim 
-from torchsummary import summary
+#from torchsummary import summary
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
 from torchvision import transforms, datasets
 from utils.dataset import img_dataset
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from models.modeling import VisionTransformer
+from models.success import VisionTransformer2
 
 def setup(config, pretrain = None):
     model = VisionTransformer(config)
@@ -68,7 +69,7 @@ def train(config, model, store_path):
 
     train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
 
-    device = torch.device('cpu') #'cuda' if torch.cuda.is_available() else 
+    device = torch.device('cuda:0') #'cuda' if torch.cuda.is_available() else 
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(),
@@ -92,8 +93,7 @@ def train(config, model, store_path):
             labels = labels.to(device)
             optimizer.zero_grad()
 
-            outputs = model(inputs)
-            loss = model.loss_calcu(outputs, labels)
+            outputs, loss = model(inputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -170,12 +170,17 @@ def main():
           'learning_rate':1e-2,
           'weight_decay':0,
     }
-    model = setup(CONFIG)
+    #model = setup(CONFIG)
     # x = torch.rand(3,3,224,224)
     # result = model(x)
     # print(result)
+    model = VisionTransformer2()
     train(CONFIG, model, 'checkpoint/best.pt')
-
+    # model = VisionTransformer2()
+    # model.to(torch.device('cuda:0'))
+    # x = torch.rand(3,3,224,224).to(torch.device('cuda:0'))
+    # result = model(x)
+    #print(result)
 
 if __name__ == '__main__':
     main()
