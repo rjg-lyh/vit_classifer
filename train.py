@@ -71,7 +71,6 @@ def train(config, model, store_path):
 
     device = torch.device('cuda:0') #'cuda' if torch.cuda.is_available() else 
     model.to(device)
-
     optimizer = torch.optim.SGD(model.parameters(),
                                 lr=learining_rate,
                                 momentum=0.9,
@@ -174,7 +173,7 @@ def main():
     # x = torch.rand(3,3,224,224)
     # result = model(x)
     # print(result)
-    model = VisionTransformer2()
+    model = VisionTransformer(CONFIG)
     train(CONFIG, model, 'checkpoint/best.pt')
     # model = VisionTransformer2()
     # model.to(torch.device('cuda:0'))
