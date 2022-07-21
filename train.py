@@ -2,6 +2,7 @@ import os
 import time
 import copy
 from tqdm import tqdm
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim 
@@ -55,10 +56,11 @@ def creat_dataLoader(data_dir, batch_size):
 
 def train(config, model, store_path):
     num_epochs = config['num_epochs']
-    learining_rate = config['learining_rate']
+    learining_rate = config['learning_rate']
     weight_decay = config['weight_decay']
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0
+    LRs = []
     val_acc_history = []
     train_acc_history = []
     train_losses = []
@@ -66,7 +68,7 @@ def train(config, model, store_path):
 
     train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
 
-    device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
+    device = torch.device('cpu') #'cuda' if torch.cuda.is_available() else 
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(),
@@ -75,7 +77,7 @@ def train(config, model, store_path):
                                 weight_decay=weight_decay)
     scheduler = WarmupCosineSchedule(optimizer, warmup_steps=num_epochs//20, t_total=num_epochs)
     # Train!
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
         since = time.time()
@@ -91,12 +93,12 @@ def train(config, model, store_path):
             optimizer.zero_grad()
 
             outputs = model(inputs)
-            loss = model(outputs, labels)
+            loss = model.loss_calcu(outputs, labels)
             loss.backward()
             optimizer.step()
 
             _, predicts = torch.max(outputs, dim=1)
-            running_loss += loss.item() * inputs.size()
+            running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(predicts == labels)
             
         epoch_acc = running_corrects/len(train_loader.dataset)
@@ -106,9 +108,49 @@ def train(config, model, store_path):
         since = time.time()
         print('Time elapsed {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
         print('train Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
+        print('Optimizer learning rate : {:.7f}'.format(optimizer.param_groups[0]['lr']))
+        LRs.append(optimizer.param_groups[0]['lr'])
+        train_acc_history.append(epoch_acc)
+        train_losses.append(epoch_loss)
+        scheduler.step()
 
+        # valid!
+        if not epoch%5:
+            print('Epoch {} has a validation'.format(epoch))
+            print('-' * 10)
+            model.eval()
+            running_loss = 0.0
+            running_corrects = 0
+            for inputs, labels in tqdm(valid_loader):
+                inputs = inputs.to(device)
+                labels = labels.to(device)
 
+                outputs = model(inputs)
+                loss = model.loss_calcu(outputs, labels)
 
+                _, predicts = torch.max(outputs, dim=1)
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(predicts == labels)
+            
+            epoch_acc = running_corrects/len(valid_loader.dataset)
+            epoch_loss = running_loss/len(valid_loader.dataset)
+
+            time_elapsed = time.time() - since
+            since = time.time()
+            print('Time elapsed {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+            print('valid Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
+            val_acc_history.append(epoch_acc)
+            valid_losses.append(epoch_loss)
+            if epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+                state = {
+                  'state_dict': best_model_wts,#字典里key就是各层的名字，值就是训练好的权重
+                  'best_acc': best_acc,
+                  'optimizer' : optimizer.state_dict(),
+                }
+                torch.save(best_model_wts, store_path)
+        print('train and valid have finished successfully !')  
         pass
     
 
@@ -122,21 +164,19 @@ def main():
           'num_heads':12,
           'drop_rate':0.1,
           'num_classes':3,
-          'data_dir':'data',
-          'batch_size':2,
+          'data_dir':'./data',
+          'batch_size':1,
           'num_epochs':200,
           'learning_rate':1e-2,
           'weight_decay':0,
     }
-
-    
-
     model = setup(CONFIG)
+    # x = torch.rand(3,3,224,224)
+    # result = model(x)
+    # print(result)
+    train(CONFIG, model, 'checkpoint/best.pt')
 
-    train(CONFIG, model, 'checkpoint')
 
-
-
-if '__name__' == '__main__':
+if __name__ == '__main__':
     main()
 

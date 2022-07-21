@@ -35,7 +35,7 @@ class Attention(nn.Module):
         self.hidden_size = config['hidden_size']
         self.num_heads = config['num_heads']
         self.head_size = self.hidden_size // self.num_heads
-        self.quary = nn.Linear(self.hidden_size, self.hidden_size)
+        self.query = nn.Linear(self.hidden_size, self.hidden_size)
         self.key = nn.Linear(self.hidden_size, self.hidden_size)
         self.value = nn.Linear(self.hidden_size, self.hidden_size)
         pass
@@ -45,7 +45,7 @@ class Attention(nn.Module):
         return x
 
     def forward(self, x):
-        query = self.quary(x)
+        query = self.query(x)
         key = self.key(x)
         value = self.value(x)
         multi_query = self.transpose_multiHeads(query) #[3, 12, 197, 64]
