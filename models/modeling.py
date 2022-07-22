@@ -27,7 +27,6 @@ class Embedding(nn.Module):
         x = torch.cat((x, class_patch),dim=1)  #[2, 197, 768]
         x = x + self.location
         x = self.dropout(x)
-        #print(x.shape)  #----------------------------------------------
         return x
 
 class Attention(nn.Module):
@@ -88,7 +87,6 @@ class Block(nn.Module):
     def forward(self, x):
         h = x
         x = self.ln(x)
-        #print(x.shape)      # ---------------------------------------
         x = self.attn(x)
         x += h
         h = x
@@ -103,7 +101,7 @@ class Encoder(nn.Module):
         num_layers = config['num_layers']
         self.block = Block(config)
         self.ln = nn.LayerNorm(config['hidden_size'], eps=1e-6)
-        self.layer_list = []
+        self.layer_list = nn.ModuleList()
         for _ in range(num_layers):
             self.layer_list.append(copy.deepcopy(self.block))
         
@@ -134,16 +132,10 @@ class VisionTransformer(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.CELoss = nn.CrossEntropyLoss()
         pass
-    def forward(self, x):
+    def forward(self, x, targets):
         x = self.transformer(x)
-        patch0 = x[:, 0]
-        results = self.head(patch0)
-        return results
-
-    def loss_calcu(self, x, targets):
+        x = self.head(x[:, 0])
         targets = targets.t()
-        x = self.softmax(x)
-        loss = self.CELoss(x, targets)
-        return loss
-
+        loss = self.CELoss(self.softmax(x), targets)
+        return x, loss
 

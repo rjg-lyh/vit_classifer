@@ -68,7 +68,8 @@ def train(config, model, store_path):
 
     train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
 
-    device = torch.device('cpu') #'cuda:0' if torch.cuda.is_available() else 
+    device = torch.device('cuda:0') 
+    #device = torch.device('cpu') 
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(),
@@ -93,15 +94,13 @@ def train(config, model, store_path):
             optimizer.zero_grad()
             # print(inputs.shape)
             # print(labels.shape)
-            outputs = model(inputs)
-            loss = model.loss_calcu(outputs, labels)
+            outputs, loss = model(inputs, labels)
             loss.backward()
             optimizer.step()
 
             _, predicts = torch.max(outputs, dim=1)
             running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(predicts == labels)
-            
+            running_corrects += np.sum(predicts.detach().cpu().numpy() == labels.detach().cpu().numpy())
         epoch_acc = running_corrects/len(train_loader.dataset)
         epoch_loss = running_loss/len(train_loader.dataset)
 
@@ -116,7 +115,7 @@ def train(config, model, store_path):
         scheduler.step()
 
         # valid!
-        if not epoch%5:
+        if not (epoch + 1)%5:
             print('Epoch {} has a validation'.format(epoch))
             print('-' * 10)
             model.eval()
@@ -125,14 +124,11 @@ def train(config, model, store_path):
             for inputs, labels in tqdm(valid_loader):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-
-                outputs = model(inputs)
-                loss = model.loss_calcu(outputs, labels)
-
-                _, predicts = torch.max(outputs, dim=1)
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(predicts == labels)
-            
+                with torch.no_grad():
+                    outputs, loss = model(inputs, labels)
+                    _, predicts = torch.max(outputs, dim=1)
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += np.sum(predicts.detach().cpu().numpy() == labels.detach().cpu().numpy())
             epoch_acc = running_corrects/len(valid_loader.dataset)
             epoch_loss = running_loss/len(valid_loader.dataset)
 
@@ -143,8 +139,9 @@ def train(config, model, store_path):
             val_acc_history.append(epoch_acc)
             valid_losses.append(epoch_loss)
             if epoch_acc > best_acc:
+                torch.cuda.empty_cache()
                 best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
+                best_model_wts = model.state_dict()#copy.deepcopy(model.state_dict())
                 state = {
                   'state_dict': best_model_wts,#字典里key就是各层的名字，值就是训练好的权重
                   'best_acc': best_acc,
@@ -166,24 +163,22 @@ def main():
           'drop_rate':0.1,
           'num_classes':3,
           'data_dir':'./data',
-          'batch_size':1,
+          'batch_size':2,
           'num_epochs':200,
           'learning_rate':1e-2,
           'weight_decay':0,
     }
     
-    #device = torch.device('cpu')#'cuda:0' if torch.cuda.is_available() else '
     model = setup(CONFIG)
+    train(CONFIG, model, 'checkpoint/best.pt')
+
     # model.to(device)
     # x = torch.rand(3,3,224,224).to(device)
     # result = model(x)
     # print(result)
     # print(x.is_cuda)
-    train(CONFIG, model, 'checkpoint/best.pt')
 
 
 if __name__ == '__main__':
-    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    # print(x)
     main()
 
