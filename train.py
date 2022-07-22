@@ -1,6 +1,8 @@
+from cProfile import label
 import os
 import time
 import copy
+from tables import Col
 from tqdm import tqdm
 import numpy as np
 import torch
@@ -9,6 +11,7 @@ import torch.optim as optim
 from torchsummary import summary
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
+import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
 from utils.dataset import img_dataset
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
@@ -54,6 +57,25 @@ def creat_dataLoader(data_dir, batch_size):
     # print(image_datasets['train'].imgs) #返回从所有文件夹中得到的图片的路径以及其类别
     return train_dataLoader, valid_dataLoader
 
+def visualization(train_loss, valid_loss, train_acc, valid_acc, ROOT):
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+    epoch_train = len(train_loss)
+    epoch_valid = len(valid_loss)
+    interval = epoch_train//epoch_valid
+    plt.subplot(1,2,1)
+    plt.plot(range(epoch_train), train_loss, color='blue', label='train-loss') 
+    plt.plot([int(x)*interval for x in range(epoch_valid)], valid_loss, color='yellow', label='valid-loss')
+    plt.ylabel('当前损失值')
+    plt.xlabel('迭代次数/次')
+    plt.legend()                 #添加曲线注释到图中
+    plt.subplot(1,2,2)
+    plt.plot(range(epoch_train), train_acc, color='red', label='train-acc')
+    plt.plot([int(x)*interval for x in range(epoch_valid)], valid_acc, color='green', label='valid-acc')
+    plt.legend()
+    plt.savefig(os.path.join(ROOT, 'result_visual.jpg')) # 保存曲线图片
+
+
 def train(config, model, store_path):
     num_epochs = config['num_epochs']
     learining_rate = config['learning_rate']
@@ -78,6 +100,7 @@ def train(config, model, store_path):
                                 weight_decay=weight_decay)
     scheduler = WarmupCosineSchedule(optimizer, warmup_steps=num_epochs//20, t_total=num_epochs)
     # Train!
+    startTime = time.time()
     for epoch in tqdm(range(num_epochs)):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -148,7 +171,12 @@ def train(config, model, store_path):
                   'optimizer' : optimizer.state_dict(),
                 }
                 torch.save(best_model_wts, store_path)
+
+    totalTime = time.time() - startTime
+    visualization(train_losses, valid_losses, train_acc_history, val_acc_history, 'checkpoint')
     print('train and valid have finished successfully !')  
+    print('Total time elapsed {:.0f}m {:.0f}s'.format(totalTime // 60, totalTime % 60))
+    print('best_acc: ',best_acc)
     pass
     
 
