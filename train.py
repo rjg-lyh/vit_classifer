@@ -17,9 +17,9 @@ from models.modeling import VisionTransformer
 def setup(config, pretrain = None):
     model = VisionTransformer(config)
     if pretrain:
-        model.load_state_dict(torch.load(pretrain))
+        model.load_from(np.load(pretrain))
     return model
-    
+   
 def creat_dataLoader(data_dir, batch_size):
     data_transforms = {
     'train': 
@@ -169,14 +169,10 @@ def main():
           'weight_decay':0,
     }
     
-    model = setup(CONFIG)
+    model = setup(CONFIG, 'ViT-B_16.npz')
+    
     train(CONFIG, model, 'checkpoint/best.pt')
 
-    # model.to(device)
-    # x = torch.rand(3,3,224,224).to(device)
-    # result = model(x)
-    # print(result)
-    # print(x.is_cuda)
 
 
 if __name__ == '__main__':
