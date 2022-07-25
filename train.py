@@ -2,15 +2,12 @@ from cProfile import label
 import os
 import time
 import copy
-from tables import Col
 from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim 
-from torchsummary import summary
 from torch.utils.data import Dataset, DataLoader
-import torchaudio
 import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
 from utils.dataset import img_dataset
@@ -91,7 +88,8 @@ def train(config, model, store_path):
     valid_losses = []
 
     train_loader, valid_loader = creat_dataLoader(config['data_dir'],  config['batch_size'])
-
+    print(len(train_loader))
+    print(len(valid_loader))
     device = torch.device('cuda:0') 
     #device = torch.device('cpu') 
     model.to(device)
@@ -113,7 +111,7 @@ def train(config, model, store_path):
         running_loss = 0.0
         running_corrects = 0
 
-        for inputs, labels in train_loader:
+        for inputs, labels in tqdm(train_loader):
             inputs = inputs.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
@@ -193,12 +191,12 @@ def main():
           'drop_rate':0.1,
           'num_classes':6,
           'data_dir':'/home/rjg/project/data/data_vit',
-          'batch_size':2,
+          'batch_size':60,
           'num_epochs':200,
           'learning_rate':1e-2,
           'weight_decay':0,
     }
-    
+    torch.cuda.empty_cache()
     model = setup(CONFIG, '/home/rjg/project/ViT-B_16.npz')
     
     train(CONFIG, model, 'checkpoint/best.pt')

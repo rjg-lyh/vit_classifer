@@ -41,6 +41,7 @@ class Embedding(nn.Module):
         pass
     def forward(self, x):
         B = x.shape[0]
+        #print(B)
         x = self.patch_construct(x) #[2, 768, 14, 14]
         x = x.flatten(2) #[2, 768, 196]
         x = x.transpose(2,1) #[2, 196, 768]
